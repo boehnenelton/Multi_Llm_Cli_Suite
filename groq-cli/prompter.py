@@ -114,8 +114,18 @@ def get_profile(profile_path):
     p = Path(profile_path)
     full_path = p if p.is_absolute() else BASE_DIR / profile_path
     data = safe_load_config(full_path)
-    fields = [f["name"] for f in data["Fields"]]
-    instr_idx = fields.index("system_instruction")
+    fields = [f["name"].lower() for f in data["Fields"]]
+    
+    # Support both legacy snake_case and new PascalCase
+    instr_idx = -1
+    for target in ["systeminstruction", "system_instruction", "instruction"]:
+        if target in fields:
+            instr_idx = fields.index(target)
+            break
+            
+    if instr_idx == -1:
+        raise ValueError(f"Instruction field not found in profile: {profile_path}")
+        
     return data["Values"][0][instr_idx]
 
 def send_query(prompt, router, model_override=None, output_file=None):
@@ -221,14 +231,17 @@ def send_query(prompt, router, model_override=None, output_file=None):
 def main():
     parser = argparse.ArgumentParser(description="Groq Standardized Prompter")
     parser.add_argument("prompt", nargs="?", help="The prompt string")
-    parser.add_argument("--model", help="Override the active model ID (e.g., llama-3.1-8b-instant)")
+    parser.add_argument("--model", help="Override the active model ID")
+    parser.add_argument("--profile", help="Override the active profile path")
     parser.add_argument("--output", help="Save response to this file")
     
     args = parser.parse_args()
     router = load_router()
     
-    # 1. Determine the Model ID to use (Arg Override > Config Active)
+    # Arg Overrides
     model_override = args.model
+    if args.profile:
+        router["routing"]["profile"] = args.profile
     
     # v1.21 Self-Healing Health Check
     print("[*] Running v1.21 System Health Check...")

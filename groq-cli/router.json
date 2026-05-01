@@ -1,7 +1,7 @@
 {
   "routing": {
-    "profile": "configuration/groq_profile_template.104a.bejson",
-    "model": "configuration/groq_model_template.104a.bejson",
+    "profile": "/storage/emulated/0/dev/Standardization/groq_standard_profile.bejson",
+    "model": "/storage/emulated/0/dev/Standardization/groq_model_registry.104a.bejson",
     "keys": "/data/data/com.termux/files/home/.env/groq_keys.bejson"
   },
   "settings": {

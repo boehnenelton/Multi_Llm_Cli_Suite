@@ -1,11 +1,11 @@
 {
   "routing": {
-    "profile": "configuration/openrouter_profile_template.104a.bejson",
-    "model": "configuration/openrouter_model_template.104a.bejson",
+    "profile": "/storage/emulated/0/dev/Standardization/openrouter_standard_profile.bejson",
+    "model": "/storage/emulated/0/dev/Standardization/openrouter_model_registry.104a.bejson",
     "keys": "/data/data/com.termux/files/home/.env/openrouter_keys.bejson"
   },
   "settings": {
-    "request_delay_seconds": 1,
+    "request_delay_seconds": 2,
     "consecutive_error_limit": 3,
     "cooldown_minutes": 5
   }
