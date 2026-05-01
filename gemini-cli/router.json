@@ -1,0 +1,12 @@
+{
+  "routing": {
+    "profile": "configuration/bejson_schema_builder_profile.bejson",
+    "model": "configuration/gemini_model_template.104a.bejson",
+    "keys": "/data/data/com.termux/files/home/.env/gemini_keys.bejson"
+  },
+  "settings": {
+    "request_delay_seconds": 10,
+    "consecutive_error_limit": 3,
+    "cooldown_minutes": 5
+  }
+}

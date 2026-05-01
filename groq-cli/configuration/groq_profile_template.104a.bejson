@@ -1,0 +1,50 @@
+{
+  "Format": "BEJSON",
+  "Format_Version": "104a",
+  "Format_Creator": "Elton Boehnen",
+  "Service": "groq",
+  "Schema_Name": "GroqProfileRegistry",
+  "Records_Type": ["GroqProfile"],
+  "Fields": [
+    {"name": "profile_id", "type": "string"},
+    {"name": "name", "type": "string"},
+    {"name": "model_id_fk", "type": "string"},
+    {"name": "temperature", "type": "number"},
+    {"name": "max_completion_tokens", "type": "integer"},
+    {"name": "top_p", "type": "number"},
+    {"name": "stream", "type": "boolean"},
+    {"name": "reasoning_effort", "type": "string"},
+    {"name": "reasoning_format", "type": "string"},
+    {"name": "service_tier", "type": "string"},
+    {"name": "seed", "type": "integer"},
+    {"name": "presence_penalty", "type": "number"},
+    {"name": "frequency_penalty", "type": "number"},
+    {"name": "parallel_tool_calls", "type": "boolean"},
+    {"name": "citation_options", "type": "string"},
+    {"name": "system_instruction", "type": "string"},
+    {"name": "stop_sequences", "type": "string"},
+    {"name": "tools_enabled", "type": "boolean"}
+  ],
+  "Values": [
+    [
+      "78a1f3b0-4d5e-4b2a-8c9d-0e1f2a3b4c5d",
+      "Maverick-Reasoning",
+      "meta-llama/llama-4-maverick-17b-128e-instruct",
+      0.6,
+      8192,
+      0.95,
+      true,
+      "medium",
+      "parsed",
+      "on_demand",
+      42,
+      0.1,
+      0.1,
+      true,
+      "enabled",
+      "You are a sophisticated Groq-powered reasoning engine.",
+      "['<|end_of_text|>', '<|eot_id|>']",
+      false
+    ]
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "Format": "BEJSON",
+  "Format_Version": "104a",
+  "Format_Creator": "Elton Boehnen",
+  "Schema_Name": "OpenRouterProfile",
+  "Records_Type": ["Profile"],
+  "Fields": [
+    {"name": "system_instruction", "type": "string"}
+  ],
+  "Values": [
+    ["You are a helpful AI assistant. Always provide concise and accurate answers."]
+  ]
+}

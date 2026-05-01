@@ -1,0 +1,12 @@
+{
+  "routing": {
+    "profile": "configuration/groq_profile_template.104a.bejson",
+    "model": "configuration/groq_model_template.104a.bejson",
+    "keys": "/data/data/com.termux/files/home/.env/groq_keys.bejson"
+  },
+  "settings": {
+    "request_delay_seconds": 1,
+    "consecutive_error_limit": 3,
+    "cooldown_minutes": 5
+  }
+}

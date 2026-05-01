@@ -1,0 +1,61 @@
+{
+  "Format": "BEJSON",
+  "Format_Version": "104",
+  "Format_Creator": "Elton Boehnen",
+  "Records_Type": [
+    "AI_Profile"
+  ],
+  "Parent_Hierarchy": "/LLM_Configuration",
+  "Fields": [
+    {"name": "Record_Type_Parent", "type": "string"},
+    {"name": "Name", "type": "string"},
+    {"name": "Archetype", "type": "string"},
+    {"name": "Persona", "type": "string"},
+    {"name": "SystemInstruction", "type": "string"},
+    {"name": "ForbiddenTopics", "type": "array"},
+    {"name": "Avatar_Type", "type": "string"},
+    {"name": "Avatar_sourceUrl", "type": "string"},
+    {"name": "Avatar_Data", "type": "string"},
+    {"name": "MaxResponseTokens", "type": "integer"},
+    {"name": "Creativity", "type": "number"},
+    {"name": "Tone", "type": "array"},
+    {"name": "Formality", "type": "string"},
+    {"name": "Verbosity", "type": "string"},
+    {"name": "EmotionalExpression_Enabled", "type": "boolean"},
+    {"name": "EmotionalExpression_Intensity", "type": "number"},
+    {"name": "GoogleSearch_Enabled", "type": "boolean"},
+    {"name": "CodeInterpreter_Enabled", "type": "boolean"},
+    {"name": "EphemeralMemory", "type": "boolean"},
+    {"name": "CodeParsing_Mode", "type": "string"},
+    {"name": "CodeParsing_Languages", "type": "array"},
+    {"name": "CodeParsing_StructureValidation", "type": "boolean"},
+    {"name": "CodeParsing_VersionControl", "type": "boolean"}
+  ],
+  "Values": [
+    [
+      "AI_Profile",
+      "Gemini_Assistant",
+      "Tutor",
+      "Short description of the AI persona.",
+      "System instructions here...",
+      [],
+      "Emoji",
+      "",
+      "🤖",
+      65536,
+      0.2,
+      ["Professional", "Helpful"],
+      "Formal",
+      "Normal",
+      false,
+      0.0,
+      true,
+      true,
+      true,
+      "complete",
+      ["python", "javascript"],
+      true,
+      true
+    ]
+  ]
+}

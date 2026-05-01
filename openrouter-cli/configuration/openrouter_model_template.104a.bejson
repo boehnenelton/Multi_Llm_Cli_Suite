@@ -1,0 +1,35 @@
+{
+  "Format": "BEJSON",
+  "Format_Version": "104a",
+  "Format_Creator": "Elton Boehnen",
+  "Schema_Name": "OpenRouterModelTemplate",
+  "Records_Type": [
+    "OpenRouterModel"
+  ],
+  "Fields": [
+    {
+      "name": "model_name",
+      "type": "string"
+    },
+    {
+      "name": "model_id",
+      "type": "string"
+    },
+    {
+      "name": "currently_active",
+      "type": "boolean"
+    },
+    {
+      "name": "thinking_enabled",
+      "type": "boolean"
+    }
+  ],
+  "Values": [
+    ["Google Gemma 4 31B IT (Free)", "google/gemma-4-31b-it:free", true, false],
+    ["Google Gemma 3 27B IT (Free)", "google/gemma-3-27b-it:free", false, false],
+    ["Google Gemma 3 12B IT (Free)", "google/gemma-3-12b-it:free", false, false],
+    ["Liquid LFM 2.5 1.2B Thinking (Free)", "liquid/lfm-2.5-1.2b-thinking:free", false, true],
+    ["NVIDIA Nemotron 3 Nano Omni (Free)", "nvidia/nemotron-3-nano-omni", false, false],
+    ["DeepSeek V3", "deepseek/deepseek-v3", false, false]
+  ]
+}

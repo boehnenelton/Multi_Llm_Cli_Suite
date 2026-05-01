@@ -1,0 +1,24 @@
+{
+  "Format": "BEJSON",
+  "Format_Version": "104a",
+  "Format_Creator": "Elton Boehnen",
+  "Service": "groq",
+  "Schema_Name": "GroqModelRegistry",
+  "Records_Type": ["GroqModel"],
+  "Fields": [
+    {"name": "model_id", "type": "string"},
+    {"name": "owned_by", "type": "string"},
+    {"name": "context_window", "type": "integer"},
+    {"name": "description", "type": "string"},
+    {"name": "currently_active", "type": "boolean"},
+    {"name": "thinking_enabled", "type": "boolean"},
+    {"name": "google_search_enabled", "type": "boolean"}
+  ],
+  "Values": [
+    ["llama-3.3-70b-versatile", "meta", 131072, "High-performance versatile model", true, false, false],
+    ["llama-3.1-8b-instant", "meta", 131072, "Fast Meta Llama 3.1 model", false, false, false],
+    ["gemma2-9b-it", "google", 8192, "Gemma 2 9B Instruct", false, false, false],
+    ["qwen/qwen3-32b", "alibaba", 32768, "Qwen 3 32B model", false, false, false],
+    ["mixtral-8x7b-32768", "mistralai", 32768, "Mixtral 8x7B model", false, false, false]
+  ]
+}

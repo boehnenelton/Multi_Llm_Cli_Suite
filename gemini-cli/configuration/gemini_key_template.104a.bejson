@@ -1,0 +1,77 @@
+{
+  "Format": "BEJSON",
+  "Format_Version": "104a",
+  "Format_Creator": "Elton Boehnen",
+  "Schema_Name": "ApiKeyRegistry",
+  "Records_Type": [
+    "ApiKey"
+  ],
+  "Fields": [
+    {
+      "name": "key_slot",
+      "type": "integer"
+    },
+    {
+      "name": "key",
+      "type": "string"
+    }
+  ],
+  "Values": [
+    [
+      1,
+      "YOUR_GEMINI_KEY"
+    ],
+    [
+      2,
+      "YOUR_GEMINI_KEY"
+    ],
+    [
+      3,
+      "YOUR_GEMINI_KEY"
+    ],
+    [
+      4,
+      "YOUR_GEMINI_KEY"
+    ],
+    [
+      5,
+      "YOUR_GEMINI_KEY"
+    ],
+    [
+      6,
+      "YOUR_GEMINI_KEY"
+    ],
+    [
+      7,
+      "YOUR_GEMINI_KEY"
+    ],
+    [
+      8,
+      "YOUR_GEMINI_KEY"
+    ],
+    [
+      9,
+      "YOUR_GEMINI_KEY"
+    ],
+    [
+      10,
+      "YOUR_GEMINI_KEY"
+    ],
+    [
+      11,
+      "YOUR_GEMINI_KEY"
+    ],
+    [
+      12,
+      "YOUR_GEMINI_KEY"
+    ],
+    [
+      13,
+      "YOUR_GEMINI_KEY"
+    ],
+    [
+      14,
+      "YOUR_GEMINI_KEY"
+    ]
+  ]
+}

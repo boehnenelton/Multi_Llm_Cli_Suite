@@ -1,0 +1,24 @@
+{
+  "Format": "BEJSON",
+  "Format_Version": "104a",
+  "Format_Creator": "Elton Boehnen",
+  "Service": "groq",
+  "Schema_Name": "ApiKeyRegistry",
+  "Records_Type": ["ApiKey"],
+  "Fields": [
+    {"name": "key_slot", "type": "integer"},
+    {"name": "key", "type": "string"}
+  ],
+  "Values": [
+    [1, "KEY_HERE"],
+    [2, "KEY_HERE"],
+    [3, "KEY_HERE"],
+    [4, "KEY_HERE"],
+    [5, "KEY_HERE"],
+    [6, "KEY_HERE"],
+    [7, "KEY_HERE"],
+    [8, "KEY_HERE"],
+    [9, "KEY_HERE"],
+    [10, "KEY_HERE"]
+  ]
+}
