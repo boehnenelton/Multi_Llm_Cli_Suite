@@ -1,0 +1,12 @@
+{
+  "routing": {
+    "profile": "/storage/emulated/0/dev/Standardization/huggingface_standard_profile.bejson",
+    "model": "/storage/emulated/0/dev/Standardization/huggingface_model_registry.104a.bejson",
+    "keys": "/data/data/com.termux/files/home/.env/huggingface_keys.bejson"
+  },
+  "settings": {
+    "request_delay_seconds": 1,
+    "consecutive_error_limit": 3,
+    "cooldown_minutes": 5
+  }
+}
