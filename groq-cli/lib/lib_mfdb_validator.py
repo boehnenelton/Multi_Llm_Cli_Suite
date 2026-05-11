@@ -1,23 +1,24 @@
 """
 Library:     lib_mfdb_validator.py
-Jurisdiction: ["PYTHON", "CORE_COMMAND"]
-Status:      OFFICIAL — Core-Command/Lib (v1.21)
+Family:      Core
+Jurisdiction: ["PYTHON", "BEJSON_LIBRARIES"]
+Status:      OFFICIAL — Core-Command/Lib (v1.5)
 Author:      Elton Boehnen
-Version:     1.21 (OFFICIAL) Sticky Mount & Validation Gate
-Date:        2026-04-27
-Description: MFDB (Multifile Database) validation library.
-             Layers entirely on lib_bejson_validator.py — no new BEJSON
-             version, no new field types. All entity files remain valid
-             standalone BEJSON 104 documents; the manifest is a valid
-             BEJSON 104a document.
+Version:     1.5 OFFICIAL
+MFDB Version: 1.3.1
+Format_Creator: Elton Boehnen
+Date:        2026-05-01
+Description: Standard validator for MFDB (Multifile Database) structures.
+             Layers on lib_bejson_validator.py.
              v1.2 adds support for validating .mfdb.zip archives.
-             v1.21 adds diagnostic context for smart recovery.
+             v1.3 adds support for Federation headers.
 """
 import json
 import os
 import zipfile
 from dataclasses import dataclass, field as dc_field
 from pathlib import Path
+from typing import Any, List, Dict, Optional
 
 from lib_bejson_validator import (
     BEJSONValidationError,
@@ -59,10 +60,12 @@ class MFDBValidationError(Exception):
 class _MFDBValidationState:
     errors:   list[str] = dc_field(default_factory=list)
     warnings: list[str] = dc_field(default_factory=list)
+    findings: dict      = dc_field(default_factory=dict)
 
     def reset(self):
         self.errors.clear()
         self.warnings.clear()
+        self.findings.clear()
 
     def add_error(self, message: str, location: str = ""):
         entry = "ERROR"
@@ -78,6 +81,9 @@ class _MFDBValidationState:
         entry += f" | Message: {message}"
         self.warnings.append(entry)
 
+    def add_finding(self, key: str, value: Any):
+        self.findings[key] = value
+
     def has_errors(self)   -> bool:     return bool(self.errors)
     def has_warnings(self) -> bool:     return bool(self.warnings)
 
@@ -89,9 +95,37 @@ _mstate = _MFDBValidationState()
 # Internal helpers (also imported by lib_mfdb_core)
 # ---------------------------------------------------------------------------
 
+
 def _load_json(path: str) -> dict:
-    """Load raw JSON without BEJSON validation (used internally)."""
-    return json.loads(Path(path).read_text(encoding="utf-8"))
+    """Load raw JSON without BEJSON validation. Supports .mfdb.zip archives."""
+    p = Path(path)
+    # Scenario A: Regular file
+    if p.is_file() and not path.lower().endswith(".zip"):
+        return json.loads(p.read_text(encoding="utf-8"))
+    
+    # Scenario B: Zip Archive (defaulting to manifest)
+    if path.lower().endswith(".zip") and p.is_file():
+        with zipfile.ZipFile(path, "r") as z:
+            # For MFDB archives, we assume the manifest is the target
+            if "104a.mfdb.bejson" in z.namelist():
+                return json.loads(z.read("104a.mfdb.bejson").decode("utf-8"))
+            raise FileNotFoundError(f"104a.mfdb.bejson not found in archive: {path}")
+
+    # Scenario C: Logical path inside zip (e.g. archive.zip/data/user.bejson)
+    # This is a bit more complex, we check if a part of the path is a zip
+    parts = p.parts
+    for i, part in enumerate(parts):
+        if part.lower().endswith(".zip"):
+            zip_path = str(Path(*parts[:i+1]))
+            inner_path = "/".join(parts[i+1:])
+            if os.path.exists(zip_path):
+                with zipfile.ZipFile(zip_path, "r") as z:
+                    if inner_path in z.namelist():
+                        return json.loads(z.read(inner_path).decode("utf-8"))
+    
+    # Fallback to standard path handling
+    return json.loads(p.read_text(encoding="utf-8"))
+
 
 
 def _rows_as_dicts(doc: dict) -> list[dict]:
@@ -100,10 +134,14 @@ def _rows_as_dicts(doc: dict) -> list[dict]:
     return [dict(zip(names, row)) for row in doc["Values"]]
 
 
+
 def _resolve_entity_path(manifest_path: str, file_path_rel: str) -> str:
     """Resolve a relative file_path (from manifest record) to an absolute path."""
+    if manifest_path.lower().endswith(".zip"):
+        return os.path.join(manifest_path, file_path_rel)
     manifest_dir = os.path.dirname(os.path.abspath(manifest_path))
     return os.path.normpath(os.path.join(manifest_dir, file_path_rel))
+
 
 
 # ---------------------------------------------------------------------------
@@ -138,11 +176,12 @@ def mfdb_validator_validate_archive(archive_path: str) -> bool:
 # Manifest Validation  (Spec §8.1)
 # ---------------------------------------------------------------------------
 
-def mfdb_validator_validate_manifest(manifest_path: str) -> bool:
+def mfdb_validator_validate_manifest(manifest_path: str, reset_state: bool = True) -> bool:
     """
     Validate an MFDB manifest file (104a.mfdb.bejson).
     """
-    _mstate.reset()
+    if reset_state:
+        _mstate.reset()
     p = Path(manifest_path)
 
     if not p.exists():
@@ -157,6 +196,10 @@ def mfdb_validator_validate_manifest(manifest_path: str) -> bool:
         raise MFDBValidationError(str(exc), E_MFDB_NOT_MANIFEST) from exc
 
     doc = _load_json(manifest_path)
+
+    # Federation Finding (v1.4
+    if "Network_Role" in doc:
+        _mstate.add_finding("Network_Role", doc["Network_Role"])
 
     if doc.get("Format_Version") != "104a":
         _mstate.add_error("Manifest must be Format_Version '104a'", "Format_Version")
@@ -226,11 +269,13 @@ def mfdb_validator_validate_manifest(manifest_path: str) -> bool:
 def mfdb_validator_validate_entity_file(
     entity_path: str,
     check_bidirectional: bool = True,
+    reset_state: bool = True,
 ) -> bool:
     """
     Validate an MFDB entity file (BEJSON 104 with Parent_Hierarchy back-link).
     """
-    _mstate.reset()
+    if reset_state:
+        _mstate.reset()
     p = Path(entity_path)
 
     if not p.exists():
@@ -379,15 +424,17 @@ def mfdb_validator_check_integrity(manifest_path: str) -> bool:
 def mfdb_validator_validate_database(
     manifest_path: str,
     strict_fk: bool = False,
+    reset_state: bool = True,
 ) -> bool:
     """
     Full MFDB database validation.
     """
-    _mstate.reset()
+    if reset_state:
+        _mstate.reset()
 
     # Step 1: Validate the manifest itself.
     try:
-        mfdb_validator_validate_manifest(manifest_path)
+        mfdb_validator_validate_manifest(manifest_path, reset_state=False)
     except MFDBValidationError:
         raise
 
@@ -400,6 +447,10 @@ def mfdb_validator_validate_database(
         if e.get("primary_key")
     }
 
+    # Federation Finding: Registry presence (v1.4
+    if "ConnectedSlave" in pk_map or any(e["entity_name"] == "ConnectedSlave" for e in entries):
+        _mstate.add_finding("Has_Federation_Registry", True)
+
     # Step 2: Validate each entity file.
     for entry in entries:
         entity_name    = entry["entity_name"]
@@ -409,7 +460,7 @@ def mfdb_validator_validate_database(
         resolved = _resolve_entity_path(manifest_path, file_path_rel)
 
         try:
-            mfdb_validator_validate_entity_file(resolved, check_bidirectional=True)
+            mfdb_validator_validate_entity_file(resolved, check_bidirectional=True, reset_state=False)
         except MFDBValidationError as exc:
             _mstate.add_error(
                 f"Entity '{entity_name}' failed validation: {exc}",
@@ -489,5 +540,6 @@ def mfdb_validator_has_errors()    -> bool:         return _mstate.has_errors()
 def mfdb_validator_has_warnings()  -> bool:         return _mstate.has_warnings()
 def mfdb_validator_get_errors()    -> list[str]:    return list(_mstate.errors)
 def mfdb_validator_get_warnings()  -> list[str]:    return list(_mstate.warnings)
+def mfdb_validator_get_findings()  -> dict:         return dict(_mstate.findings)
 def mfdb_validator_error_count()   -> int:          return len(_mstate.errors)
 def mfdb_validator_warning_count() -> int:          return len(_mstate.warnings)

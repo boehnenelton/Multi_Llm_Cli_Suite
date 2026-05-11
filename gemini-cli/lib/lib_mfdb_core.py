@@ -1,15 +1,19 @@
 """
 Library:     lib_mfdb_core.py
-Jurisdiction: ["PYTHON", "CORE_COMMAND"]
-Status:      OFFICIAL — Core-Command/Lib (v1.21)
+Family:      Core
+Jurisdiction: ["PYTHON", "BEJSON_LIBRARIES"]
+Status:      OFFICIAL — Core-Command/Lib (v1.5)
 Author:      Elton Boehnen
-Version:     1.21 (OFFICIAL) Sticky Mount & Validation Gate
-Date:        2026-04-27
+Version:     1.5 OFFICIAL
+MFDB Version: 1.3.1
+Date:        2026-05-01
 Description: MFDB (Multifile Database) core operations.
              Layers on lib_bejson_core.py and lib_mfdb_validator.py.
              Provides create, read, write, query, join, and sync
              operations across MFDB entity files and their manifest.
              v1.2 adds MFDBArchive support for .mfdb.zip transport.
+             v1.3 adds Master/Slave Federation standards.
+
              v1.21 adds Dynamic Recovery and Self-Healing.
 """
 import json
@@ -88,6 +92,28 @@ def _get_manifest_entry(manifest_path: str, entity_name: str) -> dict:
     return entry
 
 
+
+def _read_file_content(path: str) -> str:
+    """Reads file content, supporting .mfdb.zip archives."""
+    p = Path(path)
+    if p.is_file() and not path.lower().endswith(".zip"):
+        return p.read_text(encoding="utf-8")
+    
+    # Check for zip path parts
+    parts = p.parts
+    for i, part in enumerate(parts):
+        if part.lower().endswith(".zip"):
+            zip_path = str(Path(*parts[:i+1]))
+            inner_path = "/".join(parts[i+1:])
+            if os.path.exists(zip_path):
+                with zipfile.ZipFile(zip_path, "r") as z:
+                    if inner_path in z.namelist():
+                        return z.read(inner_path).decode("utf-8")
+                    elif not inner_path and "104a.mfdb.bejson" in z.namelist():
+                         return z.read("104a.mfdb.bejson").decode("utf-8")
+    
+    return p.read_text(encoding="utf-8")
+
 def _get_entity_path(manifest_path: str, entity_name: str) -> str:
     entry = _get_manifest_entry(manifest_path, entity_name)
     return _resolve_entity_path(manifest_path, entry["file_path"])
@@ -96,7 +122,9 @@ def _get_entity_path(manifest_path: str, entity_name: str) -> str:
 def _load_entity_doc(manifest_path: str, entity_name: str) -> dict:
     """Load and validate the raw BEJSON 104 doc for an entity."""
     entity_path = _get_entity_path(manifest_path, entity_name)
-    return bejson_core_load_file(entity_path)
+    content = _read_file_content(entity_path)
+    from lib_bejson_core import bejson_core_load_string
+    return bejson_core_load_string(content)
 
 
 def _write_entity_doc(doc: dict, entity_path: str) -> None:
@@ -623,7 +651,8 @@ def mfdb_core_create_database(
     db_description: str = "",
     schema_version: str = "1.0.0",
     author:         str = "Elton Boehnen",
-    mfdb_version:   str = "1.21",
+    mfdb_version:   str = "1.3.1",
+    network_role: str = "Master",
 ) -> str:
     """Create a new MFDB from scratch."""
     root = Path(root_dir)
@@ -660,6 +689,7 @@ def mfdb_core_create_database(
         "Format_Version":  "104a",
         "Format_Creator":  "Elton Boehnen",
         "MFDB_Version":    mfdb_version,
+        "Network_Role": network_role,
         "DB_Name":         db_name,
         "DB_Description":  db_description,
         "Schema_Version":  schema_version,
@@ -691,3 +721,30 @@ def mfdb_core_create_database(
         bejson_core_atomic_write(resolved, entity_doc)
 
     return manifest_path
+
+def mfdb_core_resolve_path(path_str: str) -> str:
+    """
+    Hardening: Resolve system placeholders in paths.
+    Supports: {INTERNAL_STORAGE}, {SC_ROOT}, {PROJECTS_MGMT}, {ADMIN_LAYER}, 
+             internal_storage, ~, and environment variables in ${VAR} format.
+    """
+    if not path_str:
+        return path_str
+    
+    sc_root = os.getenv("SC_ROOT", "/storage/emulated/0/Brain-Container/BEJSON_Core")
+    mappings = {
+        "{INTERNAL_STORAGE}": os.getenv("INTERNAL_STORAGE", "/storage/emulated/0"),
+        "internal_storage": os.getenv("INTERNAL_STORAGE", "/storage/emulated/0"),
+        "{SC_ROOT}": sc_root,
+        "{PROJECTS_MGMT}": os.getenv("PROJECTS_MGMT", "/storage/emulated/0/Projects/Management"),
+        "{ADMIN_LAYER}": os.getenv("ADMIN_LAYER", "/storage/emulated/0/Administrative_Layer"),
+    }
+    
+    resolved = str(path_str)
+    for placeholder, actual in mappings.items():
+        if actual:
+            resolved = resolved.replace(placeholder, actual)
+    
+    resolved = os.path.expanduser(resolved)
+    resolved = os.path.expandvars(resolved)
+    return os.path.normpath(resolved)

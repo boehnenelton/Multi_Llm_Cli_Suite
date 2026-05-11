@@ -1,10 +1,12 @@
 """
 Library:     lib_bejson_core.py
-Jurisdiction: ["PYTHON", "CORE_COMMAND"]
-Status:      OFFICIAL — Core-Command/Lib (v1.21)
+Family:      Core
+Jurisdiction: ["PYTHON", "SWITCH_CORE"]
+Status:      OFFICIAL
 Author:      Elton Boehnen
-Version:     1.21 (OFFICIAL) CoreEvo alignment
-Date:        2026-04-27
+Version:     1.6 OFFICIAL
+MFDB Version: 1.3.1
+Date:        2026-05-01
 Description: BEJSON (Boehnen Elton JSON) core library — document creation, mutation, validation,
              atomic file I/O with fsync, and query/sort utilities.
              MFDB relational functions are in lib_mfdb_core.py (decoupled).
@@ -32,6 +34,12 @@ from lib_bejson_validator import (
     bejson_validator_validate_string,
 )
 
+import base64
+import hashlib
+from Crypto.Cipher import AES
+from Crypto.Protocol.KDF import PBKDF2
+from Crypto.Random import get_random_bytes
+
 # ---------------------------------------------------------------------------
 # Error codes
 # ---------------------------------------------------------------------------
@@ -44,12 +52,122 @@ E_CORE_TYPE_CONVERSION_FAILED = 24
 E_CORE_BACKUP_FAILED = 25
 E_CORE_WRITE_FAILED = 26
 E_CORE_QUERY_FAILED = 27
+E_CORE_ENCRYPTION_FAILED = 28
+E_CORE_DECRYPTION_FAILED = 29
 
 
 class BEJSONCoreError(Exception):
     def __init__(self, message: str, code: int):
         super().__init__(message)
         self.code = code
+
+
+from Crypto.Hash import SHA256
+
+# ---------------------------------------------------------------------------
+# ENCRYPTION UTILITIES (AES-GCM + PBKDF2)
+# ---------------------------------------------------------------------------
+
+def _derive_key(password: str, salt: bytes) -> bytes:
+    """Derive a 256-bit AES key using PBKDF2-HMAC-SHA256."""
+    return PBKDF2(password, salt, dkLen=32, count=100000, hmac_hash_module=SHA256)
+
+
+def bejson_core_encrypt_record(doc: dict, record_index: int, password: str) -> dict:
+    """
+    Encrypt all values in a record using AES-GCM.
+    The resulting values are stored as base64-encoded strings:
+    ENC:AES-GCM:<salt_b64>:<iv_b64>:<ciphertext_b64>:<tag_b64>
+    Updates 'is_encrypted' field to True if present in schema.
+    """
+    _check_record_bounds(doc, record_index)
+    doc = copy.deepcopy(doc)
+    record = doc["Values"][record_index]
+    
+    salt = get_random_bytes(16)
+    key = _derive_key(password, salt)
+    
+    salt_b64 = base64.b64encode(salt).decode('utf-8')
+    
+    # Encrypt each value that isn't already encrypted or null
+    for i, val in enumerate(record):
+        # Skip Record_Type_Parent in 104db (index 0) and is_encrypted field
+        field_name = doc["Fields"][i]["name"]
+        if field_name == "Record_Type_Parent" or field_name == "is_encrypted":
+            continue
+            
+        if val is None:
+            continue
+            
+        if isinstance(val, str) and val.startswith("ENC:AES-GCM:"):
+            continue
+
+        # Prepare data for encryption (stringify first to handle types)
+        data = json.dumps(val).encode('utf-8')
+        iv = get_random_bytes(12)
+        cipher = AES.new(key, AES.MODE_GCM, nonce=iv)
+        ciphertext, tag = cipher.encrypt_and_digest(data)
+        
+        iv_b64 = base64.b64encode(iv).decode('utf-8')
+        ct_b64 = base64.b64encode(ciphertext).decode('utf-8')
+        tag_b64 = base64.b64encode(tag).decode('utf-8')
+        
+        record[i] = f"ENC:AES-GCM:{salt_b64}:{iv_b64}:{ct_b64}:{tag_b64}"
+
+    # Update is_encrypted flag if exists
+    try:
+        ie_idx = bejson_core_get_field_index(doc, "is_encrypted")
+        record[ie_idx] = True
+    except BEJSONCoreError:
+        pass
+        
+    return doc
+
+
+def bejson_core_decrypt_record(doc: dict, record_index: int, password: str) -> dict:
+    """
+    Decrypt all encrypted values in a record.
+    Updates 'is_encrypted' field to False if present in schema.
+    """
+    _check_record_bounds(doc, record_index)
+    doc = copy.deepcopy(doc)
+    record = doc["Values"][record_index]
+    
+    for i, val in enumerate(record):
+        if not isinstance(val, str) or not val.startswith("ENC:AES-GCM:"):
+            continue
+            
+        parts = val.split(":")
+        if len(parts) != 6:
+            continue
+            
+        _, _, salt_b64, iv_b64, ct_b64, tag_b64 = parts
+        
+        try:
+            salt = base64.b64decode(salt_b64)
+            iv = base64.b64decode(iv_b64)
+            ciphertext = base64.b64decode(ct_b64)
+            tag = base64.b64decode(tag_b64)
+            
+            key = _derive_key(password, salt)
+            cipher = AES.new(key, AES.MODE_GCM, nonce=iv)
+            decrypted_data = cipher.decrypt_and_verify(ciphertext, tag)
+            
+            # Restore original type
+            record[i] = json.loads(decrypted_data.decode('utf-8'))
+        except Exception as e:
+            raise BEJSONCoreError(f"Decryption failed for record {record_index}, field index {i}: {str(e)}", E_CORE_DECRYPTION_FAILED)
+
+    # Update is_encrypted flag if exists
+    try:
+        ie_idx = bejson_core_get_field_index(doc, "is_encrypted")
+        # Check if any other fields are still encrypted (unlikely but safe)
+        any_enc = any(isinstance(v, str) and v.startswith("ENC:AES-GCM:") for v in record)
+        record[ie_idx] = any_enc
+    except BEJSONCoreError:
+        pass
+        
+    return doc
 
 
 # ---------------------------------------------------------------------------

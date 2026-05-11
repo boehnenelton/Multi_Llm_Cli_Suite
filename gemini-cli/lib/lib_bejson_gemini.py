@@ -1,14 +1,21 @@
 """
 Library:     lib_bejson_gemini.py
-Jurisdiction: ["PYTHON", "CORE_COMMAND"]
-Status:      OFFICIAL — Core-Command/Lib (v1.1)
+MFDB Version: 1.3.1
+Format_Creator: Elton Boehnen
+Status:      OFFICIAL - v1.3.1
+Date:        2026-05-06
+"""
+"""
+Library:     lib_bejson_gemini.py
+Family:      AI
+Jurisdiction: ["PYTHON", "CORE_COMMAND", "GEMINI_STANDARD"]
+Status:      OFFICIAL_STANDARD
 Author:      Elton Boehnen
-Version:     1.1 (OFFICIAL)
-Date:        2026-04-23
-Description: Advanced BEJSON Gemini Library (v3). 
-             Sources core BEJSON and Validator libraries.
-             Handles API key slots (104a), Context folder logic, 
-             and Model selection per Gemini-CLI Policy.
+Version:     1.5 OFFICIAL
+Date:        2026-05-01
+Description: Unified Gemini standard library for BEJSON 104/104a.
+             Schemas are EMBEDDED to ensure global consistency.
+             Integrates Key Registry, Model Registry, and AI Profiles.
 """
 
 import os
@@ -17,258 +24,262 @@ import json
 import time
 import requests
 import random
+import copy
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Callable
+from typing import List, Dict, Any, Optional, Union
 
-# Add Lib directory to path if not already there
-# CRITICAL FIX (v3.1): Dynamic path resolution — no hard-coded paths.
-# Resolves the Lib directory relative to this script's location,
-# with environment variable override for custom deployments.
-_LIB_DIR_ENV = os.environ.get("BEJSON_LIB_DIR", "")
-if _LIB_DIR_ENV:
-    LIB_DIR = os.path.abspath(_LIB_DIR_ENV)
-else:
-    # Resolve relative to this file's location (handles any install path)
-    LIB_DIR = str(Path(__file__).resolve().parent)
+# --- EMBEDDED SCHEMAS (THE GLOBAL STANDARD) ---
 
-if LIB_DIR not in sys.path:
-    sys.path.insert(0, LIB_DIR)
-
-try:
-    from lib_bejson_core import (
-        bejson_core_load_file,
-        bejson_core_atomic_write,
-        bejson_core_create_104a,
-        bejson_core_get_field_index,
-        BEJSONCoreError
-    )
-    from lib_bejson_validator import bejson_validator_validate_file
-except ImportError:
-    print("CRITICAL: lib_bejson_core or lib_bejson_validator not found in path.")
-    sys.exit(1)
-
-# --- Constants & Templates ---
-
-API_KEY_TEMPLATE = {
+SCHEMA_KEY_REGISTRY = {
     "Format": "BEJSON",
     "Format_Version": "104a",
     "Format_Creator": "Elton Boehnen",
-    "File_Version": 2,
-    "Jurisdiction": "All scripts utilizing Gemini API keys",
+    "Schema_Name": "GeminiKeyRegistry",
     "Records_Type": ["ApiKey"],
     "Fields": [
-        {"name": "slot_id", "type": "string"},
-        {"name": "api_key", "type": "string"},
-        {"name": "service", "type": "string"}
+        {"name": "key_slot", "type": "integer"},
+        {"name": "key", "type": "string"}
     ],
     "Values": []
 }
 
-MODELS = [
-MODELS = [
-    "gemini-3-flash-preview",
-    "gemini-3.1-flash-lite-preview",
-    "gemini-3.1-pro-preview",
-    "gemini-flash-lite-latest",
-    "gemini-2.5-flash",
-]
+SCHEMA_MODEL_REGISTRY = {
+    "Format": "BEJSON",
+    "Format_Version": "104a",
+    "Format_Creator": "Elton Boehnen",
+    "Schema_Name": "GeminiModelRegistry",
+    "Records_Type": ["GeminiModel"],
+    "Fields": [
+        {"name": "model_name", "type": "string"},
+        {"name": "model_id", "type": "string"},
+        {"name": "currently_active", "type": "boolean"},
+        {"name": "thinking_enabled", "type": "boolean"},
+        {"name": "google_search_enabled", "type": "boolean"}
+    ],
+    "Values": [
+        ["Gemini 3.1 Pro (Preview)", "gemini-3.1-pro-preview", False, True, True],
+        ["Gemini 3 Flash (Preview)", "gemini-3-flash-preview", True, False, True],
+        ["Gemini 3.1 Flash-Lite (Preview)", "gemini-3.1-flash-lite-preview", False, False, True],
+        ["Gemini Flash-Lite (Latest)", "gemini-flash-lite-latest", False, False, True],
+        ["Gemini 2.5 Flash", "gemini-2.5-flash", False, False, False]
+    ]
+}
 
-DEFAULT_MODEL = "gemini-3-flash-preview"
-DEFAULT_KEY_FILE = "/data/data/com.termux/files/home/.env/api_keys_v2_decrypted.104a.bejson"
+SCHEMA_AI_PROFILE = {
+    "Format": "BEJSON",
+    "Format_Version": "104",
+    "Format_Creator": "Elton Boehnen",
+    "Records_Type": ["AI_Profile"],
+    "Parent_Hierarchy": "/LLM_Configuration",
+    "Fields": [
+        {"name": "Record_Type_Parent", "type": "string"},
+        {"name": "Name", "type": "string"},
+        {"name": "Archetype", "type": "string"},
+        {"name": "Persona", "type": "string"},
+        {"name": "SystemInstruction", "type": "string"},
+        {"name": "ForbiddenTopics", "type": "array"},
+        {"name": "Avatar_Type", "type": "string"},
+        {"name": "Avatar_sourceUrl", "type": "string"},
+        {"name": "Avatar_Data", "type": "string"},
+        {"name": "MaxResponseTokens", "type": "integer"},
+        {"name": "Creativity", "type": "number"},
+        {"name": "Tone", "type": "array"},
+        {"name": "Formality", "type": "string"},
+        {"name": "Verbosity", "type": "string"},
+        {"name": "EmotionalExpression_Enabled", "type": "boolean"},
+        {"name": "EmotionalExpression_Intensity", "type": "number"},
+        {"name": "GoogleSearch_Enabled", "type": "boolean"},
+        {"name": "CodeInterpreter_Enabled", "type": "boolean"},
+        {"name": "EphemeralMemory", "type": "boolean"},
+        {"name": "CodeParsing_Mode", "type": "string"},
+        {"name": "CodeParsing_Languages", "type": "array"},
+        {"name": "CodeParsing_StructureValidation", "type": "boolean"},
+        {"name": "CodeParsing_VersionControl", "type": "boolean"},
+        {"name": "Thinking_Supported", "type": "boolean"}
+    ],
+    "Values": [
+        [
+            "AI_Profile",
+            "Gemini_Standard",
+            "Assistant",
+            "A helpful and professional AI assistant.",
+            "You are a helpful assistant. Provide clear, accurate, and concise information.",
+            [], "Emoji", "", "🤖", 65536, 0.7, ["Professional", "Helpful"], "Formal", "Balanced", 
+            False, 0.0, True, True, True, "complete", ["python", "javascript"], True, True, True
+        ]
+    ]
+}
 
-# --- Gemini Key Manager ---
+# --- Environment & Setup ---
 
-class GeminiKeyManager:
-    """Manages Gemini API key slots in BEJSON 104a format."""
+LIB_DIR = os.environ.get("BEJSON_LIB_DIR", str(Path(__file__).resolve().parent))
+if LIB_DIR not in sys.path:
+    sys.path.insert(0, LIB_DIR)
 
-    def __init__(self, key_path: str = DEFAULT_KEY_FILE):
-        self.key_path = Path(key_path)
-        self.data = None
-        self.slots = {} # slot_id -> key
-        
-        if not self.key_path.exists():
-            self.create_template()
+try:
+    from lib_bejson_core import bejson_core_load_file, bejson_core_get_field_index, bejson_core_atomic_write
+except ImportError:
+    # Minimal fallback logic for core operations
+    def bejson_core_load_file(p):
+        with open(p, 'r') as f: return json.load(f)
+    def bejson_core_get_field_index(d, n):
+        for i, f in enumerate(d.get("Fields", [])):
+            if f["name"] == n: return i
+        return -1
+    def bejson_core_atomic_write(p, d):
+        with open(p, 'w') as f: json.dump(d, f, indent=2)
+
+# --- Registry Managers ---
+
+class GeminiKeyRegistry:
+    def __init__(self, file_path: Union[str, Path]):
+        self.file_path = Path(file_path)
+        self.keys = []
+        if not self.file_path.exists():
+            self.create_default()
         self.load()
 
-    def create_template(self):
-        """Creates the initial API key file if it doesn't exist."""
-        bejson_core_atomic_write(str(self.key_path), API_KEY_TEMPLATE, create_backup=False)
+    def create_default(self):
+        bejson_core_atomic_write(str(self.file_path), SCHEMA_KEY_REGISTRY)
 
     def load(self):
-        """Loads keys from the BEJSON file."""
         try:
-            self.data = bejson_core_load_file(str(self.key_path))
-            idx_id = bejson_core_get_field_index(self.data, "slot_id")
-            if idx_id == -1: idx_id = bejson_core_get_field_index(self.data, "key_slot")
+            data = bejson_core_load_file(str(self.file_path))
+            idx = bejson_core_get_field_index(data, "key")
+            if idx != -1:
+                self.keys = [row[idx] for row in data["Values"] if "YOUR_GEMINI_KEY" not in str(row[idx])]
+        except Exception:
+            self.keys = []
+
+class GeminiModelRegistry:
+    def __init__(self, file_path: Union[str, Path]):
+        self.file_path = Path(file_path)
+        self.models = []
+        self.active_model_id = "gemini-3-flash-preview"
+        if not self.file_path.exists():
+            self.create_default()
+        self.load()
+
+    def create_default(self):
+        bejson_core_atomic_write(str(self.file_path), SCHEMA_MODEL_REGISTRY)
+
+    def load(self):
+        try:
+            data = bejson_core_load_file(str(self.file_path))
+            fields = [f["name"] for f in data["Fields"]]
+            id_idx = fields.index("model_id")
+            active_idx = fields.index("currently_active")
+            think_idx = fields.index("thinking_enabled") if "thinking_enabled" in fields else -1
+            search_idx = fields.index("google_search_enabled") if "google_search_enabled" in fields else -1
             
-            idx_key = bejson_core_get_field_index(self.data, "api_key")
-            if idx_key == -1: idx_key = bejson_core_get_field_index(self.data, "key")
-            
-            self.slots = {}
-            if idx_id != -1 and idx_key != -1:
-                for row in self.data.get("Values", []):
-                    self.slots[str(row[idx_id])] = row[idx_key]
-        except Exception as e:
-            # Fallback if load fails or file is empty
-            self.slots = {}
+            self.models = []
+            for row in data["Values"]:
+                m_info = {
+                    "id": row[id_idx],
+                    "thinking": row[think_idx] if think_idx != -1 else False,
+                    "search": row[search_idx] if search_idx != -1 else False
+                }
+                self.models.append(m_info)
+                if row[active_idx] is True:
+                    self.active_model_id = row[id_idx]
+        except Exception:
+            # Fallback to embedded models if load fails
+            for row in SCHEMA_MODEL_REGISTRY["Values"]:
+                self.models.append({"id": row[1], "thinking": row[3], "search": row[4]})
 
-    def save(self):
-        """Saves the current slot data back to BEJSON."""
-        if not self.data:
-            self.data = copy.deepcopy(API_KEY_TEMPLATE)
+    def get_model_info(self, model_id: Optional[str] = None) -> Dict[str, Any]:
+        target_id = model_id or self.active_model_id
+        for m in self.models:
+            if m["id"] == target_id: return m
+        return {"id": target_id, "thinking": False, "search": False}
+
+class GeminiProfile:
+    def __init__(self, file_path: Union[str, Path]):
+        self.file_path = Path(file_path)
+        self.instruction = ""
+        self.config = {}
+        if not self.file_path.exists():
+            self.create_default()
+        self.load()
+
+    def create_default(self):
+        bejson_core_atomic_write(str(self.file_path), SCHEMA_AI_PROFILE)
+
+    def load(self):
+        try:
+            data = bejson_core_load_file(str(self.file_path))
+            fields = [f["name"] for f in data["Fields"]]
+            instr_idx = fields.index("SystemInstruction")
+            self.instruction = data["Values"][0][instr_idx]
+            self.config = {f["name"]: data["Values"][0][i] for i, f in enumerate(data["Fields"])}
+        except Exception:
+            # Fallback to embedded default profile
+            self.instruction = SCHEMA_AI_PROFILE["Values"][0][4]
+            self.config = {f["name"]: SCHEMA_AI_PROFILE["Values"][0][i] for i, f in enumerate(SCHEMA_AI_PROFILE["Fields"])}
+
+# --- Unified Prompter Engine ---
+
+class GeminiStandardPrompter:
+    def __init__(
+        self, 
+        key_registry_path: Union[str, Path],
+        model_registry_path: Union[str, Path],
+        profile_path: Union[str, Path]
+    ):
+        self.key_reg = GeminiKeyRegistry(key_registry_path)
+        self.model_reg = GeminiModelRegistry(model_registry_path)
+        self.profile = GeminiProfile(profile_path)
+        self.current_key_idx = 0
+        self.last_request_time = 0
+        self.request_delay = 1.0
+
+    def _get_next_key(self) -> Optional[str]:
+        keys = self.key_reg.keys
+        if not keys: return None
+        key = keys[self.current_key_idx]
+        self.current_key_idx = (self.current_key_idx + 1) % len(keys)
+        return key
+
+    def prompt(self, user_input: str, model_id: Optional[str] = None) -> str:
+        now = time.time()
+        diff = now - self.last_request_time
+        if diff < self.request_delay: time.sleep(self.request_delay - diff)
         
-        idx_id = bejson_core_get_field_index(self.data, "slot_id")
-        idx_key = bejson_core_get_field_index(self.data, "api_key")
-        idx_svc = bejson_core_get_field_index(self.data, "service")
+        key = self._get_next_key()
+        if not key: return "ERROR: No valid API keys."
+
+        m_info = self.model_reg.get_model_info(model_id)
         
-        new_values = []
-        for sid, key in self.slots.items():
-            row = [None] * len(self.data["Fields"])
-            row[idx_id] = sid
-            row[idx_key] = key
-            row[idx_svc] = "Gemini"
-            new_values.append(row)
-        
-        self.data["Values"] = new_values
-        bejson_core_atomic_write(str(self.key_path), self.data)
-
-    def get_key(self, slot_id: Optional[str] = None) -> Optional[str]:
-        """Returns a key. If slot_id is None, returns a random key."""
-        if not self.slots:
-            return None
-        if slot_id and slot_id in self.slots:
-            return self.slots[slot_id]
-        return random.choice(list(self.slots.values()))
-
-    def set_key(self, slot_id: str, key: str):
-        """Sets or updates a key slot."""
-        self.slots[slot_id] = key
-        self.save()
-
-    def get_active_count(self) -> int:
-        return len(self.slots)
-
-# --- Gemini Query Engine ---
-
-class GeminiQuery:
-    """Handles Gemini API interaction with Context and Policy support."""
-
-    def __init__(self, key_manager: GeminiKeyManager, script_path: str, model: str = DEFAULT_MODEL):
-        self.km = key_manager
-        self.model = model
-        self.script_dir = Path(script_path).resolve().parent if os.path.isfile(script_path) else Path(script_path).resolve()
-        self.context_dir = self._init_context_dir()
-        self.enabled_context_files = [] # List of filenames to include
-        self.external_context_path = None
-        self.use_external_context = False
-        self.status_callback = None
-
-    def _init_context_dir(self) -> Path:
-        """Section 3A/3B: Initialize Context folder."""
-        lc = self.script_dir / "context"
-        uc = self.script_dir / "Context"
-        if lc.exists() and lc.is_dir():
-            return lc
-        uc.mkdir(exist_ok=True)
-        return uc
-
-    def set_status_callback(self, callback: Callable[[str], None]):
-        self.status_callback = callback
-
-    def update_status(self, status: str):
-        if self.status_callback:
-            self.status_callback(status)
-        else:
-            print(f"[*] {status}")
-
-    def get_available_context_files(self) -> List[str]:
-        base = self.external_context_path if (self.use_external_context and self.external_context_path) else self.context_dir
-        if not base or not base.exists(): return []
-        return [f.name for f in base.iterdir() if f.is_file()]
-
-    def query(self, prompt: str, system_instruction: Optional[str] = None, thinking: bool = False, google_search: bool = False) -> str:
-        """Executes a Gemini query and returns a clean response."""
-        
-        # Section 5A: No key testing! Try at moment of generation.
-        key = self.km.get_key()
-        if not key:
-            self.update_status("IDLE: Warning! No API Keys Detected!")
-            return ""
-
-        self.update_status("SENDING: Query dispatched, waiting...")
-
-        # Section 3E: Attach Context
-        context_data = ""
-        base = self.external_context_path if (self.use_external_context and self.external_context_path) else self.context_dir
-        
-        for fname in self.enabled_context_files:
-            fpath = base / fname
-            if fpath.exists():
-                try:
-                    content = fpath.read_text(errors='ignore')
-                    context_data += f"\n--- CONTEXT FILE: {fname} ---\n{content}\n--- END CONTEXT ---\n"
-                except Exception:
-                    pass
-
-        if context_data:
-            study_header = "The following attached files are for context and study only. DO NOT directly import or copy them. Study and learn from them to assist with the request. If you're writing, use it to write original content from what you learn."
-            prompt = f"{study_header}\n\n{context_data}\n\nUSER REQUEST: {prompt}"
-
-        # API Call
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={key}"
-        
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{m_info['id']}:generateContent?key={key}"
         payload = {
-            "contents": [{"parts": [{"text": prompt}]}]
+            "contents": [{"parts": [{"text": user_input}]}],
+            "system_instruction": {"parts": [{"text": self.profile.instruction}]},
+            "generationConfig": {
+                "maxOutputTokens": self.profile.config.get("MaxResponseTokens", 65536),
+                "temperature": self.profile.config.get("Creativity", 0.7)
+            }
         }
-        if system_instruction:
-            payload["system_instruction"] = {"parts": [{"text": system_instruction}]}
-
-        # Add Google Search if enabled
-        if google_search:
+        if m_info["search"] or self.profile.config.get("GoogleSearch_Enabled", False):
             payload["tools"] = [{"google_search": {}}]
-
-        # Add Thinking if enabled (using 2026 standard thinking_config)
-        if thinking:
-            payload["generationConfig"] = payload.get("generationConfig", {})
+        if m_info["thinking"] or self.profile.config.get("Thinking_Supported", False):
             payload["generationConfig"]["thinking_config"] = {"include_thoughts": True}
 
-        self.update_status("PROCESSING: Query Received, processing and awaiting response.")
-
+        self.last_request_time = time.time()
         try:
-            response = requests.post(url, json=payload, timeout=60)
-            response.raise_for_status()
-            data = response.json()
-            
-            # Extract clean response
+            res = requests.post(url, json=payload, timeout=90)
+            res.raise_for_status()
+            data = res.json()
             if "candidates" in data and data["candidates"]:
-                text = data["candidates"][0]["content"]["parts"][0]["text"]
-                return text.strip()
-            else:
-                return f"Error: No candidates returned. Raw: {json.dumps(data)}"
+                return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+            return f"ERROR: No candidates. {json.dumps(data)}"
         except Exception as e:
-            return f"Error during query: {str(e)}"
+            return f"ERROR: {str(e)}"
 
-    def toggle_context_file(self, filename: str, state: bool):
-        if state and filename not in self.enabled_context_files:
-            self.enabled_context_files.append(filename)
-        elif not state and filename in self.enabled_context_files:
-            self.enabled_context_files.remove(filename)
+# --- Global Standard Paths (2026) ---
 
-    def set_external_context(self, path: str, enabled: bool = True):
-        self.external_context_path = Path(path).resolve()
-        self.use_external_context = enabled
+STD_KEY_PATH = "/Data/Data/com.termux/files/home/.env/gemini_keys.bejson"
+STD_MODEL_PATH = "{SC_ROOT}/Schemas/gemini_model_registry.104a.bejson"
+STD_PROFILE_PATH = "{SC_ROOT}/Schemas/gemini_standard_profile.bejson"
 
-# --- Module Functions ---
-
-def get_engine_status(km: GeminiKeyManager) -> str:
-    count = km.get_active_count()
-    if count == 0:
-        return "IDLE: Warning! No API Keys Detected!"
-    return f"IDLE: ({count}) API Key Slots Active! System ready."
-
-if __name__ == "__main__":
-    # Self-test/Example
-    km = GeminiKeyManager("test_keys.bejson.json")
-    print(get_engine_status(km))
-    # engine = GeminiQuery(km, __file__)
-    # print(f"Context Dir: {engine.context_dir}")
+def get_standard_prompter():
+    return GeminiStandardPrompter(STD_KEY_PATH, STD_MODEL_PATH, STD_PROFILE_PATH)
