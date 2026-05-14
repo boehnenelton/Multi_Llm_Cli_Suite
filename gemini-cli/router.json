@@ -1,8 +1,8 @@
 {
   "routing": {
-    "profile": "/storage/emulated/0/dev/Standardization/gemini_standard_profile.bejson",
-    "model": "/storage/emulated/0/dev/Standardization/gemini_model_registry.104a.bejson",
-    "keys": "/data/data/com.termux/files/home/.env/gemini_keys.bejson"
+    "profile": "/storage/emulated/0/Projects/Management/dev/Standardization/gemini_standard_profile.bejson",
+    "model": "/storage/emulated/0/Projects/Management/dev/Standardization/gemini_model_registry.104a.bejson",
+    "keys": "/Data/Data/com.termux/files/home/.env/gemini_keys.bejson"
   },
   "settings": {
     "request_delay_seconds": 2,
