@@ -277,7 +277,7 @@ class GeminiStandardPrompter:
 
 # --- Global Standard Paths (2026) ---
 
-STD_KEY_PATH = "/Data/Data/com.termux/files/home/.env/gemini_keys.bejson"
+STD_KEY_PATH = "/data/data/com.termux/files/home/.env/openrouter_keys.bejson"
 STD_MODEL_PATH = "{SC_ROOT}/Schemas/gemini_model_registry.104a.bejson"
 STD_PROFILE_PATH = "{SC_ROOT}/Schemas/gemini_standard_profile.bejson"
 

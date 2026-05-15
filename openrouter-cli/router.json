@@ -1,7 +1,7 @@
 {
   "routing": {
-    "profile": "/storage/emulated/0/dev/Standardization/openrouter_standard_profile.bejson",
-    "model": "/storage/emulated/0/dev/Standardization/openrouter_model_registry.104a.bejson",
+    "profile": "/storage/emulated/0/Projects/Management/Dev/Python/Multi_Llm_Cli_Suite/openrouter-cli/configuration/openrouter_profile_template.104a.bejson",
+    "model": "/storage/emulated/0/Projects/Management/Dev/Python/Multi_Llm_Cli_Suite/openrouter-cli/configuration/openrouter_model_template.104a.bejson",
     "keys": "/data/data/com.termux/files/home/.env/openrouter_keys.bejson"
   },
   "settings": {

@@ -1,7 +1,7 @@
 {
   "routing": {
-    "profile": "/storage/emulated/0/dev/Standardization/huggingface_standard_profile.bejson",
-    "model": "/storage/emulated/0/dev/Standardization/huggingface_model_registry.104a.bejson",
+    "profile": "/storage/emulated/0/Projects/Management/Dev/Python/Multi_Llm_Cli_Suite/huggingface-cli/configuration/huggingface_standard_profile.bejson",
+    "model": "/storage/emulated/0/Projects/Management/Dev/Python/Multi_Llm_Cli_Suite/huggingface-cli/configuration/huggingface_model_registry.104a.bejson",
     "keys": "/data/data/com.termux/files/home/.env/huggingface_keys.bejson"
   },
   "settings": {

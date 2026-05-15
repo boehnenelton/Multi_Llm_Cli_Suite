@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MULTI LLM CHAT</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Source+Code+Pro:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0a0a0a;
+    --surface:  #111;
+    --surface2: #181818;
+    --border:   #252525;
+    --accent:   #DE2626;
+    --accent-d: #b01e1e;
+    --green:    #4caf50;
+    --yellow:   #f5a623;
+    --text:     #e8e8e8;
+    --muted:    #666;
+    --dim:      #444;
+    --mono:     'Source Code Pro', monospace;
+    --ui:       'Inter', sans-serif;
+  }
+
+  body { background: var(--bg); color: var(--text); font-family: var(--ui); min-height: 100vh; }
+
+  /* HEADER */
+  header {
+    background: var(--surface);
+    border-bottom: 2px solid var(--accent);
+    padding: 12px 18px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  header h1 { font-size: 0.95rem; font-weight: 700; letter-spacing: 0.18em; color: var(--accent); }
+  .ver      { font-size: 0.65rem; color: var(--muted); font-family: var(--mono); margin-left: auto; }
+
+  /* LAYOUT */
+  main {
+    max-width: 860px; margin: 0 auto;
+    padding: 18px 14px 60px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+
+  /* PANEL */
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 3px; }
+  .panel-hdr {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 7px 12px;
+    font-size: 0.62rem; font-weight: 700; letter-spacing: 0.2em;
+    color: var(--accent); font-family: var(--mono);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .panel-hdr .badge {
+    font-size: 0.58rem; padding: 2px 6px; border-radius: 2px;
+    font-weight: 600; letter-spacing: 0.1em;
+  }
+  .badge-ok    { background: #1a3a1a; color: var(--green); border: 1px solid #2a5a2a; }
+  .badge-err   { background: #2a1010; color: var(--accent); border: 1px solid #4a1010; }
+  .badge-warn  { background: #2a2010; color: var(--yellow); border: 1px solid #4a3010; }
+  .panel-body  { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+
+  /* FORM */
+  label { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.15em; color: var(--muted); font-family: var(--mono); display: block; margin-bottom: 4px; }
+
+  select, input[type="text"], textarea {
+    background: var(--bg); border: 1px solid var(--border); color: var(--text);
+    font-family: var(--mono); font-size: 0.82rem;
+    padding: 7px 9px; border-radius: 2px; width: 100%; outline: none;
+    transition: border-color 0.12s; -webkit-appearance: none;
+  }
+  select:focus, input:focus, textarea:focus { border-color: var(--accent); }
+  select option { background: var(--surface2); }
+  textarea { resize: vertical; min-height: 70px; line-height: 1.5; }
+
+  /* PATH ROW */
+  .path-row { display: flex; gap: 6px; align-items: stretch; }
+  .path-row input { flex: 1; }
+  .btn-inspect {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--muted); font-family: var(--mono); font-size: 0.6rem;
+    font-weight: 700; letter-spacing: 0.1em;
+    padding: 0 10px; border-radius: 2px; cursor: pointer;
+    white-space: nowrap; transition: all 0.12s;
+  }
+  .btn-inspect:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* INSPECT RESULT */
+  .inspect-result {
+    font-family: var(--mono); font-size: 0.68rem;
+    color: var(--muted); padding: 5px 8px;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 2px; display: none;
+    line-height: 1.6;
+  }
+  .inspect-result.visible { display: block; }
+  .hl { color: var(--text); }
+  .hl-g { color: var(--green); }
+  .hl-r { color: var(--accent); }
+  .hl-y { color: var(--yellow); }
+
+  /* PROFILE PREVIEW */
+  #profile-preview {
+    font-family: var(--mono); font-size: 0.7rem;
+    color: var(--muted); line-height: 1.7;
+    display: none;
+  }
+  #profile-preview.visible { display: block; }
+  #profile-preview .field { display: flex; gap: 6px; }
+  #profile-preview .field-k { color: var(--dim); min-width: 90px; }
+  #profile-preview .field-v { color: var(--text); }
+  #profile-preview .instr { margin-top: 6px; padding: 6px 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 2px; color: #aaa; font-size: 0.67rem; max-height: 80px; overflow-y: auto; }
+
+  /* SEND ROW */
+  .send-row { display: flex; gap: 8px; align-items: flex-end; }
+  .send-row textarea { flex: 1; }
+
+  /* BUTTONS */
+  .btn {
+    background: var(--accent); color: #fff; border: none;
+    font-family: var(--mono); font-size: 0.72rem; font-weight: 700;
+    letter-spacing: 0.12em; padding: 9px 16px; border-radius: 2px;
+    cursor: pointer; transition: background 0.12s; white-space: nowrap;
+  }
+  .btn:hover   { background: var(--accent-d); }
+  .btn:disabled{ background: #333; color: #555; cursor: default; }
+  .btn-load { background: var(--surface2); border: 1px solid var(--accent); color: var(--accent); }
+  .btn-load:hover { background: var(--accent); color: #fff; }
+
+  /* STATUS BAR */
+  #status-bar {
+    font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.1em;
+    padding: 7px 12px; border-radius: 2px;
+    background: var(--surface2); border: 1px solid var(--border); color: var(--muted);
+    min-height: 30px; display: flex; align-items: center;
+  }
+  #status-bar.ok   { color: var(--green);  border-color: #2a5a2a; }
+  #status-bar.err  { color: var(--accent); border-color: #4a1010; }
+  #status-bar.busy { color: var(--yellow); border-color: #4a3010; }
+
+  /* RESPONSE */
+  #response-box {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 2px;
+    padding: 12px; font-family: var(--mono); font-size: 0.8rem; line-height: 1.7;
+    white-space: pre-wrap; word-break: break-word; min-height: 100px; color: var(--text);
+  }
+
+  /* STDOUT LOG (collapsible) */
+  details { border: 1px solid var(--border); border-radius: 2px; }
+  summary {
+    padding: 6px 10px; font-family: var(--mono); font-size: 0.62rem;
+    font-weight: 700; letter-spacing: 0.15em; color: var(--muted);
+    cursor: pointer; user-select: none;
+  }
+  summary:hover { color: var(--text); }
+  #stdout-box {
+    background: var(--bg); padding: 10px; font-family: var(--mono);
+    font-size: 0.68rem; color: #555; line-height: 1.6;
+    max-height: 180px; overflow-y: auto; white-space: pre-wrap;
+  }
+
+  /* CHAT LOG */
+  .log-ctrl { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  #log-count { font-family: var(--mono); font-size: 0.62rem; color: var(--muted); margin-left: auto; }
+  #log-container {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 2px;
+    padding: 8px; font-family: var(--mono); font-size: 0.7rem;
+    max-height: 320px; overflow-y: auto; color: var(--muted);
+  }
+  .le { border-bottom: 1px solid #181818; padding: 7px 0; }
+  .le:last-child { border-bottom: none; }
+  .le-hdr { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .le-ts  { color: var(--dim); font-size: 0.62rem; }
+  .le-svc { color: var(--accent); font-weight: 600; }
+  .le-mdl { color: var(--muted); }
+  .le-st-ok  { color: var(--green); font-weight: 700; }
+  .le-st-err { color: var(--accent); font-weight: 700; }
+  .le-p   { color: #999; margin-top: 2px; }
+  .le-r   { color: var(--text); margin-top: 2px; }
+  .le-re  { color: var(--accent); margin-top: 2px; }
+
+  /* SPINNER */
+  .spin {
+    display: inline-block; width: 9px; height: 9px;
+    border: 2px solid #444; border-top-color: var(--accent);
+    border-radius: 50%; animation: s .7s linear infinite;
+    margin-right: 7px; vertical-align: middle;
+  }
+  @keyframes s { to { transform: rotate(360deg); } }
+
+  @media(max-width:600px){
+    .send-row { flex-direction: column; }
+    .btn { width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>MULTI LLM CHAT</h1>
+  <span class="ver">v2.1 · Suite wrapper · {{ suite_root }}</span>
+</header>
+
+<main>
+
+<!-- ── ROUTER SELECTION ──────────────────────────────────────────── -->
+<div class="panel" id="panel-router">
+  <div class="panel-hdr">
+    ROUTER SELECTION
+    <span class="badge" id="prompter-badge"></span>
+  </div>
+  <div class="panel-body">
+
+    <div>
+      <label>SUITE ROOT  <span style="color:var(--dim);font-weight:400">(parent folder of gemini-cli/, groq-cli/, etc. — saved to data/suite_root.txt)</span></label>
+      <div class="path-row">
+        <input type="text" id="inp-suite-root" placeholder="e.g. /storage/emulated/0/Projects/AI_Suite">
+        <button class="btn-inspect" onclick="saveSuiteRoot()">SAVE</button>
+      </div>
+      <div class="inspect-result" id="suite-root-result"></div>
+    </div>
+
+    <div>
+      <label>SERVICE</label>
+      <select id="sel-service">
+        {% for s in services %}
+        <option value="{{ s.id }}">{{ s.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label>CLI DIRECTORY (auto-detected · read-only)</label>
+      <input type="text" id="cli-dir" readonly style="color:var(--dim)">
+    </div>
+
+  </div>
+</div>
+
+<!-- ── ROUTING PATHS ─────────────────────────────────────────────── -->
+<div class="panel">
+  <div class="panel-hdr">ROUTING CONFIGURATION</div>
+  <div class="panel-body">
+
+    <!-- Keys -->
+    <div>
+      <label>KEYS FILE  <span style="color:var(--dim);font-weight:400">(router.json → routing.keys)</span></label>
+      <div class="path-row">
+        <input type="text" id="path-keys" placeholder="— set suite root above —">
+        <button class="btn-inspect" onclick="inspectKeys()">INSPECT</button>
+      </div>
+      <div class="inspect-result" id="keys-result"></div>
+    </div>
+
+    <!-- Model file -->
+    <div>
+      <label>MODEL FILE  <span style="color:var(--dim);font-weight:400">(router.json → routing.model)</span></label>
+      <div class="path-row">
+        <input type="text" id="path-model" placeholder="— set suite root above —">
+        <button class="btn-inspect btn-load" onclick="loadModels()">LOAD MODELS</button>
+      </div>
+      <div class="inspect-result" id="models-result"></div>
+    </div>
+
+    <!-- Profile file -->
+    <div>
+      <label>PROFILE FILE  <span style="color:var(--dim);font-weight:400">(router.json → routing.profile)</span></label>
+      <div class="path-row">
+        <input type="text" id="path-profile" placeholder="— set suite root above —">
+        <button class="btn-inspect" onclick="inspectProfile()">INSPECT</button>
+      </div>
+      <div class="inspect-result" id="profile-result"></div>
+      <div id="profile-preview"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── MODEL + SEND ──────────────────────────────────────────────── -->
+<div class="panel">
+  <div class="panel-hdr">PROMPT</div>
+  <div class="panel-body">
+
+    <div>
+      <label>MODEL <span style="color:var(--dim);font-weight:400">(load models above first)</span></label>
+      <select id="sel-model" disabled>
+        <option value="">— LOAD MODELS FIRST —</option>
+      </select>
+    </div>
+
+    <div class="send-row">
+      <div style="flex:1">
+        <label>MESSAGE  <span style="color:var(--dim);font-weight:400">(Enter = send · Shift+Enter = newline)</span></label>
+        <textarea id="inp-message" rows="4" placeholder="Type your message..."></textarea>
+      </div>
+      <button class="btn" id="btn-send" onclick="sendMessage()" style="height:98px">SEND</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- STATUS -->
+<div id="status-bar">READY</div>
+
+<!-- ── RESPONSE ──────────────────────────────────────────────────── -->
+<div class="panel">
+  <div class="panel-hdr">RESPONSE</div>
+  <div class="panel-body">
+    <div id="response-box"></div>
+    <details id="stdout-details" style="display:none">
+      <summary>PROMPTER STDOUT</summary>
+      <pre id="stdout-box"></pre>
+    </details>
+  </div>
+</div>
+
+<!-- ── CHAT LOG ──────────────────────────────────────────────────── -->
+<div class="panel">
+  <div class="panel-hdr">CHAT LOG</div>
+  <div class="panel-body">
+    <div class="log-ctrl">
+      <button class="btn-inspect" onclick="loadLog()">REFRESH</button>
+      <span id="log-count">0 ENTRIES</span>
+    </div>
+    <div id="log-container"><div style="color:var(--dim);font-size:0.68rem">NO ENTRIES YET.</div></div>
+  </div>
+</div>
+
+</main>
+
+<script>
+  // ── ELEMENTS ────────────────────────────────────────────────────────────────
+  const selService    = document.getElementById('sel-service');
+  const inpSuiteRoot  = document.getElementById('inp-suite-root');
+  const cliDirInput   = document.getElementById('cli-dir');
+  const pathKeys      = document.getElementById('path-keys');
+  const pathModel     = document.getElementById('path-model');
+  const pathProfile   = document.getElementById('path-profile');
+  const selModel      = document.getElementById('sel-model');
+  const inpMessage    = document.getElementById('inp-message');
+  const btnSend       = document.getElementById('btn-send');
+  const statusBar     = document.getElementById('status-bar');
+  const responseBox   = document.getElementById('response-box');
+  const stdoutDetails = document.getElementById('stdout-details');
+  const stdoutBox     = document.getElementById('stdout-box');
+  const logContainer  = document.getElementById('log-container');
+  const logCount      = document.getElementById('log-count');
+  const prompterBadge = document.getElementById('prompter-badge');
+
+  // ── STATUS ──────────────────────────────────────────────────────────────────
+  function setStatus(msg, type = '') {
+    statusBar.className = type;
+    statusBar.innerHTML = type === 'busy'
+      ? `<span class="spin"></span>${msg}` : msg;
+  }
+
+  function showInspect(id, html, show = true) {
+    const el = document.getElementById(id);
+    el.innerHTML = html;
+    el.classList.toggle('visible', show);
+  }
+
+  // ── LOAD ROUTER ─────────────────────────────────────────────────────────────
+  // ── SUITE ROOT CONFIG ────────────────────────────────────────────────────────
+  async function loadConfig() {
+    try {
+      const d = await (await fetch('/api/config')).json();
+      inpSuiteRoot.value = d.suite_root || '';
+    } catch(e) {}
+  }
+
+  async function saveSuiteRoot() {
+    const val = inpSuiteRoot.value.trim();
+    const el  = document.getElementById('suite-root-result');
+    if (!val) { el.innerHTML = '<span class="hl-r">PATH CANNOT BE EMPTY</span>'; el.classList.add('visible'); return; }
+    el.innerHTML = 'SAVING...'; el.classList.add('visible');
+    try {
+      const d = await (await fetch('/api/config', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({suite_root: val})
+      })).json();
+      if (d.error) { el.innerHTML = `<span class="hl-r">ERROR: ${d.error}</span>`; return; }
+      el.innerHTML = '<span class="hl-g">SAVED — RELOADING ROUTER</span>';
+      loadRouter(selService.value);
+    } catch(e) { el.innerHTML = `<span class="hl-r">ERROR: ${e.message}</span>`; }
+  }
+
+  async function loadRouter(service) {
+    prompterBadge.textContent = '';
+    prompterBadge.className = 'badge';
+    pathKeys.value = 'LOADING...';
+    pathModel.value = 'LOADING...';
+    pathProfile.value = 'LOADING...';
+    cliDirInput.value = '';
+    selModel.innerHTML = '<option value="">— LOAD MODELS FIRST —</option>';
+    selModel.disabled = true;
+    ['keys-result','models-result','profile-result'].forEach(id => showInspect(id,'',false));
+    document.getElementById('profile-preview').classList.remove('visible');
+
+    try {
+      const res = await fetch(`/api/router?service=${service}`);
+      const data = await res.json();
+      if (data.error) {
+        setStatus(`ROUTER ERROR: ${data.error}`, 'err');
+        return;
+      }
+      cliDirInput.value = data.cli_dir;
+      pathKeys.value    = data.routing.keys    || '';
+      pathModel.value   = data.routing.model   || '';
+      pathProfile.value = data.routing.profile || '';
+
+      if (data.prompter_ok) {
+        prompterBadge.textContent = 'PROMPTER OK';
+        prompterBadge.className = 'badge badge-ok';
+      } else {
+        prompterBadge.textContent = 'PROMPTER NOT FOUND';
+        prompterBadge.className = 'badge badge-err';
+      }
+      setStatus('ROUTER LOADED — EDIT PATHS IF NEEDED, THEN LOAD MODELS', '');
+    } catch (e) {
+      setStatus(`FETCH ERROR: ${e.message}`, 'err');
+    }
+  }
+
+  selService.addEventListener('change', () => loadRouter(selService.value));
+
+  // ── INSPECT KEYS ────────────────────────────────────────────────────────────
+  async function inspectKeys() {
+    const path = pathKeys.value.trim();
+    if (!path) { showInspect('keys-result', '<span class="hl-r">NO PATH SET</span>', true); return; }
+    showInspect('keys-result', 'LOADING...', true);
+    try {
+      const res = await fetch(`/api/inspect/keys?path=${encodeURIComponent(path)}`);
+      const d = await res.json();
+      if (d.error) { showInspect('keys-result', `<span class="hl-r">ERROR: ${d.error}</span>`, true); return; }
+      const cls = d.valid > 0 ? 'hl-g' : 'hl-r';
+      showInspect('keys-result',
+        `SCHEMA: <span class="hl">${d.schema_name}</span>  ·  ` +
+        `VALID KEYS: <span class="${cls}">${d.valid}</span> / <span class="hl">${d.total}</span>  ` +
+        `<span class="hl-y">${d.valid === 0 ? '⚠ ALL PLACEHOLDERS' : ''}</span>`, true);
+    } catch (e) {
+      showInspect('keys-result', `<span class="hl-r">ERROR: ${e.message}</span>`, true);
+    }
+  }
+
+  // ── LOAD MODELS ─────────────────────────────────────────────────────────────
+  async function loadModels() {
+    const path = pathModel.value.trim();
+    if (!path) { showInspect('models-result', '<span class="hl-r">NO PATH SET</span>', true); return; }
+    showInspect('models-result', 'LOADING...', true);
+    selModel.disabled = true;
+    selModel.innerHTML = '<option value="">LOADING...</option>';
+    try {
+      const res = await fetch(`/api/inspect/models?path=${encodeURIComponent(path)}`);
+      const data = await res.json();
+      if (data.error) {
+        showInspect('models-result', `<span class="hl-r">ERROR: ${data.error}</span>`, true);
+        selModel.innerHTML = '<option value="">ERROR</option>';
+        return;
+      }
+      selModel.innerHTML = '';
+      let activeSet = false;
+      data.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        opt.textContent = m.name !== m.id ? `${m.name}  [${m.id}]` : m.id;
+        if (m.active && !activeSet) { opt.selected = true; activeSet = true; }
+        selModel.appendChild(opt);
+      });
+      if (!activeSet && selModel.options.length) selModel.options[0].selected = true;
+      selModel.disabled = false;
+      showInspect('models-result',
+        `<span class="hl-g">${data.length} MODELS LOADED</span>  ·  ` +
+        `ACTIVE: <span class="hl">${data.find(m=>m.active)?.name || data[0]?.id || '?'}</span>`, true);
+    } catch (e) {
+      showInspect('models-result', `<span class="hl-r">ERROR: ${e.message}</span>`, true);
+    }
+  }
+
+  // ── INSPECT PROFILE ─────────────────────────────────────────────────────────
+  async function inspectProfile() {
+    const path = pathProfile.value.trim();
+    if (!path) { showInspect('profile-result', '<span class="hl-r">NO PATH SET</span>', true); return; }
+    showInspect('profile-result', 'LOADING...', true);
+    const prev = document.getElementById('profile-preview');
+    prev.classList.remove('visible');
+    try {
+      const res = await fetch(`/api/inspect/profile?path=${encodeURIComponent(path)}`);
+      const d = await res.json();
+      if (d.error) {
+        showInspect('profile-result', `<span class="hl-r">ERROR: ${d.error}</span>`, true);
+        return;
+      }
+      showInspect('profile-result', `<span class="hl-g">PROFILE LOADED</span>`, true);
+      const tone = Array.isArray(d.tone) ? d.tone.join(', ') : (d.tone || '—');
+      prev.innerHTML = `
+        <div class="field"><span class="field-k">NAME</span><span class="field-v hl-g">${esc(d.name||'?')}</span></div>
+        <div class="field"><span class="field-k">ARCHETYPE</span><span class="field-v">${esc(d.archetype||'—')}</span></div>
+        <div class="field"><span class="field-k">FORMALITY</span><span class="field-v">${esc(d.formality||'—')}</span></div>
+        <div class="field"><span class="field-k">VERBOSITY</span><span class="field-v">${esc(d.verbosity||'—')}</span></div>
+        <div class="field"><span class="field-k">TONE</span><span class="field-v">${esc(tone)}</span></div>
+        <div class="field"><span class="field-k">CREATIVITY</span><span class="field-v">${d.creativity ?? '—'}</span></div>
+        ${d.instruction ? `<div class="instr">${esc(d.instruction)}</div>` : ''}
+      `;
+      prev.classList.add('visible');
+    } catch (e) {
+      showInspect('profile-result', `<span class="hl-r">ERROR: ${e.message}</span>`, true);
+    }
+  }
+
+  // ── SEND ────────────────────────────────────────────────────────────────────
+  async function sendMessage() {
+    const service     = selService.value;
+    const model_id    = selModel.value;
+    const message     = inpMessage.value.trim();
+    const keys_path   = pathKeys.value.trim();
+    const profile_path= pathProfile.value.trim();
+
+    if (!model_id) { setStatus('ERROR: LOAD AND SELECT A MODEL FIRST', 'err'); return; }
+    if (!message)  { setStatus('ERROR: MESSAGE IS EMPTY', 'err'); return; }
+
+    btnSend.disabled  = true;
+    responseBox.textContent = '';
+    stdoutDetails.style.display = 'none';
+    setStatus(`SENDING → ${service.toUpperCase()} · ${model_id}`, 'busy');
+
+    try {
+      const res = await fetch('/api/send', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ service, model_id, message, keys_path, profile_path })
+      });
+      const data = await res.json();
+
+      if (data.log) {
+        stdoutBox.textContent = data.log;
+        stdoutDetails.style.display = '';
+      }
+
+      if (data.status === 'ERROR' || !res.ok) {
+        responseBox.textContent = data.error || 'Unknown error.';
+        setStatus('STATUS: ERROR', 'err');
+      } else {
+        responseBox.textContent = data.response;
+        setStatus('STATUS: OK', 'ok');
+      }
+      loadLog();
+    } catch (e) {
+      responseBox.textContent = e.message;
+      setStatus('STATUS: NETWORK ERROR', 'err');
+    } finally {
+      btnSend.disabled = false;
+    }
+  }
+
+  inpMessage.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  });
+
+  // ── LOG ─────────────────────────────────────────────────────────────────────
+  async function loadLog() {
+    try {
+      const res = await fetch('/api/log');
+      const data = await res.json();
+      const entries = data.Values || [];
+      logCount.textContent = `${entries.length} ENTR${entries.length===1?'Y':'IES'}`;
+      if (!entries.length) {
+        logContainer.innerHTML = '<div style="color:var(--dim);font-size:0.68rem">NO ENTRIES YET.</div>';
+        return;
+      }
+      logContainer.innerHTML = [...entries].reverse().map(row => {
+        const [ts, svc, mdl, keys, prof, prompt, resp, status] = row;
+        const isErr = status === 'ERROR';
+        return `<div class="le">
+          <div class="le-hdr">
+            <span class="le-ts">${ts}</span>
+            <span class="le-svc">${svc.toUpperCase()}</span>
+            <span class="le-mdl">${esc(mdl)}</span>
+            <span class="${isErr?'le-st-err':'le-st-ok'}">${status}</span>
+          </div>
+          <div class="le-p">▶ ${esc(trunc(prompt,180))}</div>
+          <div class="${isErr?'le-re':'le-r'}">◀ ${esc(trunc(resp,260))}</div>
+        </div>`;
+      }).join('');
+    } catch(e) {
+      logContainer.innerHTML = `<div style="color:var(--accent)">LOG ERROR: ${e.message}</div>`;
+    }
+  }
+
+  function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function trunc(s,n){ s=String(s); return s.length>n ? s.slice(0,n)+'…' : s; }
+
+  // ── INIT ────────────────────────────────────────────────────────────────────
+  loadConfig();
+  loadRouter(selService.value);
+  loadLog();
+</script>
+</body>
+</html>
