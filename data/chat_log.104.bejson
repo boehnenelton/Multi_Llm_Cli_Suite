@@ -1,0 +1,84 @@
+{
+  "Format": "BEJSON",
+  "Format_Version": "104",
+  "Format_Creator": "Elton Boehnen",
+  "Records_Type": [
+    "ChatLog"
+  ],
+  "Fields": [
+    {
+      "name": "timestamp",
+      "type": "string"
+    },
+    {
+      "name": "service",
+      "type": "string"
+    },
+    {
+      "name": "model_id",
+      "type": "string"
+    },
+    {
+      "name": "keys_file",
+      "type": "string"
+    },
+    {
+      "name": "profile",
+      "type": "string"
+    },
+    {
+      "name": "prompt",
+      "type": "string"
+    },
+    {
+      "name": "response",
+      "type": "string"
+    },
+    {
+      "name": "status",
+      "type": "string"
+    }
+  ],
+  "Values": [
+    [
+      "2026-05-14T22:51:37",
+      "gemini",
+      "gemini-2.5-flash",
+      "/data/data/com.termux/files/home/.env/gemini_keys.bejson",
+      "/storage/emulated/0/Projects/Management/Dev/Python/Multi_Llm_Cli_Suite/gemini-cli/configuration/gemini_test_profile.bejson",
+      "Hi",
+      "Prompter exited 1:\nCRITICAL: Local libraries not found in lib/\n",
+      "ERROR"
+    ],
+    [
+      "2026-05-14T23:02:56",
+      "gemini",
+      "gemini-2.5-flash",
+      "/data/data/com.termux/files/home/.env/gemini_keys.bejson",
+      "/storage/emulated/0/Projects/Management/Dev/Python/Multi_Llm_Cli_Suite/gemini-cli/configuration/gemini_test_profile.bejson",
+      "Hi",
+      "Prompter exited 1:\nojects/Management/Dev/Python/Multi_Llm_Cli_Suite/gemini-cli/prompter.py\", line 102, in get_keys\n    data = safe_load_config(full_path)\n  File \"/storage/emulated/0/Projects/Management/Dev/Python/Multi_Llm_Cli_Suite/gemini-cli/prompter.py\", line 48, in safe_load_config\n    raise e\n  File \"/storage/emulated/0/Projects/Management/Dev/Python/Multi_Llm_Cli_Suite/gemini-cli/prompter.py\", line 41, in safe_load_config\n    return bejson_core_load_file(str(file_path))\n  File \"/storage/emulated/0/Projects/Management/Dev/Python/Multi_Llm_Cli_Suite/gemini-cli/lib/lib_bejson_core.py\", line 386, in bejson_core_load_file\n    raise BEJSONCoreError(f\"File not found: {file_path}\", E_CORE_FIELD_NOT_FOUND)\nlib_bejson_core.BEJSONCoreError: File not found: /data/data/com.termux/files/home/.env/gemini_keys.bejson\n",
+      "ERROR"
+    ],
+    [
+      "2026-05-14T23:06:11",
+      "gemini",
+      "gemini-3-flash-preview",
+      "/data/data/com.termux/files/home/.env/gemini_keys.bejson",
+      "/storage/emulated/0/Projects/Management/Dev/Python/Multi_Llm_Cli_Suite/gemini-cli/configuration/gemini_test_profile.bejson",
+      "Hi",
+      "Prompter exited 1:\nojects/Management/Dev/Python/Multi_Llm_Cli_Suite/gemini-cli/prompter.py\", line 102, in get_keys\n    data = safe_load_config(full_path)\n  File \"/storage/emulated/0/Projects/Management/Dev/Python/Multi_Llm_Cli_Suite/gemini-cli/prompter.py\", line 48, in safe_load_config\n    raise e\n  File \"/storage/emulated/0/Projects/Management/Dev/Python/Multi_Llm_Cli_Suite/gemini-cli/prompter.py\", line 41, in safe_load_config\n    return bejson_core_load_file(str(file_path))\n  File \"/storage/emulated/0/Projects/Management/Dev/Python/Multi_Llm_Cli_Suite/gemini-cli/lib/lib_bejson_core.py\", line 386, in bejson_core_load_file\n    raise BEJSONCoreError(f\"File not found: {file_path}\", E_CORE_FIELD_NOT_FOUND)\nlib_bejson_core.BEJSONCoreError: File not found: /data/data/com.termux/files/home/.env/gemini_keys.bejson\n",
+      "ERROR"
+    ],
+    [
+      "2026-05-14T23:41:39",
+      "gemini",
+      "gemini-2.5-flash",
+      "/data/data/com.termux/files/home/.env/gemini_keys.bejson",
+      "/storage/emulated/0/Projects/Management/Dev/Python/Multi_Llm_Cli_Suite/gemini-cli/configuration/gemini_test_profile.bejson",
+      "Hi",
+      "Prompter exited 1:\nojects/Management/Dev/Python/Multi_Llm_Cli_Suite/gemini-cli/prompter.py\", line 102, in get_keys\n    data = safe_load_config(full_path)\n  File \"/storage/emulated/0/Projects/Management/Dev/Python/Multi_Llm_Cli_Suite/gemini-cli/prompter.py\", line 48, in safe_load_config\n    raise e\n  File \"/storage/emulated/0/Projects/Management/Dev/Python/Multi_Llm_Cli_Suite/gemini-cli/prompter.py\", line 41, in safe_load_config\n    return bejson_core_load_file(str(file_path))\n  File \"/storage/emulated/0/Projects/Management/Dev/Python/Multi_Llm_Cli_Suite/gemini-cli/lib/lib_bejson_core.py\", line 386, in bejson_core_load_file\n    raise BEJSONCoreError(f\"File not found: {file_path}\", E_CORE_FIELD_NOT_FOUND)\nlib_bejson_core.BEJSONCoreError: File not found: /data/data/com.termux/files/home/.env/gemini_keys.bejson\n",
+      "ERROR"
+    ]
+  ]
+}

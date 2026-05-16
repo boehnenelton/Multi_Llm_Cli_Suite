@@ -1,0 +1,26 @@
+HOW IT WORKS: (error report below):
+
+ The Flask app is a pure GUI wrapper — it calls the existing prompter.py as a subprocess, patches the router.json routing pointers when you override paths, and inspects the BEJSON config files directly. No re-implemented API logic.
+
+The Flask app never touches an API. Every call goes through the CLI's prompter.py as a subprocess — all the key rotation, rate limiting, cooldown logic, thinking mode, Google Search flags, everything stays in your existing tools.
+The UI is a router.json inspector + path switcher:
+Pick a service → Flask reads that CLI's router.json, auto-fills all 3 path fields
+You see the current routing.keys, routing.model, routing.profile paths
+Change any path to point at a different BEJSON file on your device
+INSPECT on Keys → shows valid key count vs placeholder count from the key template
+LOAD MODELS → reads the model BEJSON, populates the dropdown (marks currently_active model)
+INSPECT on Profile → shows Name, Archetype, Formality, Verbosity, Tone, Creativity, and the full system instruction
+How overrides get passed to the prompter:
+Model ID → --model <id> arg (no file touch needed)
+Profile path → --profile <path> arg (no file touch needed)
+Keys path → atomic patch of router.json → run prompter → restore (with a threading lock per service)
+The prompter's stdout (status messages, key slot selection, health check) shows in a collapsible PROMPTER STDOUT section below the response so you can debug exactly what the CLI is doing.
+
+
+ERRORS:
+1. FAILING TO ACTUALLY FIND THE ROUTERS
+
+2. MESSAGE BOXSTER IS SWITCHED IT NEEDS THE SAME WIDTH AS ALL THE OTHER INPUT BOXES
+
+
+ROUTER ERROR: router.json not found: /storage/emulated/0/Download/Multi_Llm_Chat_Flask-v2.0/gemini-cli/router.json
